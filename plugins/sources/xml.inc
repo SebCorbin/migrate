@@ -913,6 +913,13 @@ class MigrateXMLReader implements Iterator {
   public $elementQuery;
 
   /**
+   * Xpath string used to test if the element matches the subquery.
+   *
+   * @var string
+   */
+  public $elementXpath = NULL;
+
+  /**
    * Xpath query string used to retrieve the primary key value from each
    * element.
    *
@@ -968,14 +975,18 @@ class MigrateXMLReader implements Iterator {
     preg_match_all('|^/([^\[]+)(.*)$|', $element_query, $matches);
     $element_path = $matches[1][0];
     $this->elementsToMatch = explode('/', $element_path);
-    $attribute_query = $matches[2][0];
-    if ($attribute_query) {
+    $sub_query = $matches[2][0];
+    if ($sub_query) {
       // Matches [@attribute="value"] (with either single- or double-quotes).
-      preg_match_all('|^\[@([^=]+)=[\'"](.*)[\'"]\]$|', $attribute_query,
-                     $matches);
-      $this->attributeName = $matches[1][0];
-      $this->attributeValue = $matches[2][0];
-    }
+      if (preg_match_all('|^\[@([^=]+)=[\'"](.*)[\'"]\]$|', $sub_query,
+        $matches)) {
+        $this->attributeName = $matches[1][0];
+        $this->attributeValue = $matches[2][0];
+      }
+      else {
+        // If not an attribute, then xpath will be applied to the element
+        $this->elementXpath = $sub_query;
+      }
 
     // If the element path contains any colons, it must be specifying
     // namespaces, so we need to compare using the prefixed element
@@ -1042,6 +1053,10 @@ class MigrateXMLReader implements Iterator {
               $node = $dom->importNode($node, TRUE);
               $dom->appendChild($node);
               $this->currentElement = simplexml_import_dom($node);
+              // Test the element againt its Xpath (if set)
+              if ($this->elementXpath && !$this->currentElement->xpath('/*' . $this->elementXpath)) {
+                continue;
+              }
               $idnode = $this->currentElement->xpath($this->idQuery);
               if (is_array($idnode)) {
                 $this->currentId = (string) reset($idnode);
