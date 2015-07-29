@@ -987,6 +987,7 @@ class MigrateXMLReader implements Iterator {
         // If not an attribute, then xpath will be applied to the element
         $this->elementXpath = $sub_query;
       }
+    }
 
     // If the element path contains any colons, it must be specifying
     // namespaces, so we need to compare using the prefixed element
